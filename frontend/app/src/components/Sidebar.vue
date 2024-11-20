@@ -30,6 +30,12 @@
             <span v-if="!isCollapsed">File Mapping</span>
           </router-link>
         </li>
+        <li>
+          <router-link to="/map">
+            <font-awesome-icon :icon="['fas', 'map']" />
+            <span v-if="!isCollapsed">Map</span>
+          </router-link>
+        </li>
       </ul>
     </nav>
   </div>

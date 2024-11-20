@@ -3,6 +3,7 @@ import AppHome from "../views/Home.vue";
 import AppAbout from "../views/About.vue";
 import AppContact from "../views/Contact.vue";
 import FileMapping from "../views/FileMapping.vue"; // Importa a nova tela
+import AppMap from "../views/Map.vue"; // Importa a nova tela
 
 const routes = [
   { path: "/", component: AppHome },
@@ -10,6 +11,7 @@ const routes = [
   { path: "/contact", component: AppContact },
   { path: "/contact", component: AppContact },
   { path: "/file-mapping", component: FileMapping },
+  { path: "/map", component: AppMap },
 ];
 
 const router = createRouter({
