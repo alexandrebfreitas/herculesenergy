@@ -20,6 +20,12 @@
             Contact
           </router-link>
         </li>
+        <li>
+          <router-link to="/file-mapping">
+            <font-awesome-icon :icon="['fas', 'folder-open']" />
+            Files
+          </router-link>
+        </li>
       </ul>
     </nav>
   </aside>
