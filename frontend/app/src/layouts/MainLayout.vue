@@ -19,22 +19,21 @@ export default {
 </script>
 
 <style scoped>
-/* Flexbox para layout principal */
 .main-layout {
-  display: flex; /* Ativa o flexbox */
-  height: 100vh; /* Garante altura total da tela */
+  display: flex;
+  height: 100vh;
 }
 
-/* Sidebar fixa */
-.main-layout .sidebar {
-  flex: 0 0 250px; /* Largura fixa de 250px */
+/* Ajuste dinâmico do conteúdo */
+.sidebar {
+  flex-shrink: 0;
 }
 
-/* Conteúdo principal */
-.main-layout .content {
-  flex: 1; /* Ocupa o espaço restante */
-  padding: 20px; /* Espaçamento interno */
-  overflow-y: auto; /* Permite rolagem se necessário */
-  background-color: #f5f5f5; /* Cor de fundo para diferenciar */
+.content {
+  flex: 1;
+  padding: 20px;
+  overflow-y: auto;
+  background-color: #f5f5f5;
+  transition: margin-left 0.3s ease; /* Transição suave */
 }
 </style>
