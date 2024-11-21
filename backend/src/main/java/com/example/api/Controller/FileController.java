@@ -77,6 +77,28 @@ public class FileController {
             return ResponseEntity.status(500).body(List.of("Error: " + e.getMessage()));
         }
     }
+    @DeleteMapping("/delete")
+    public ResponseEntity<String> deleteFile(@RequestParam("path") String path) {
+        try {
+            Path filePath = Paths.get("uploads").resolve(path).normalize();
+            if (Files.exists(filePath)) {
+                Files.walk(filePath)
+                        .sorted((a, b) -> b.compareTo(a)) // Primeiro os arquivos mais internos
+                        .forEach(p -> {
+                            try {
+                                Files.delete(p);
+                            } catch (IOException e) {
+                                throw new RuntimeException("Failed to delete " + p, e);
+                            }
+                        });
+                return ResponseEntity.ok("File or directory deleted successfully: " + filePath);
+            } else {
+                return ResponseEntity.status(404).body("File not found: " + path);
+            }
+        } catch (IOException e) {
+            return ResponseEntity.status(500).body("Could not delete file: " + e.getMessage());
+        }
+    }
 
     @GetMapping("/zip-folder")
     public ResponseEntity<Resource> zipFolder(@RequestParam("path") String path) {

@@ -1,9 +1,11 @@
 <template>
-  <div @click="hideContextMenu">
-    <h1>File Upload and Download</h1>
+  <div @click="hideContextMenu($event)">
+    <h1>File Upload, Download, and Edit</h1>
 
     <!-- Navigation Bar and File List -->
     <div>
+      <h2>Navigation</h2>
+
       <!-- Botões Undo, Redo e Upload ao lado da barra de navegação -->
       <div class="navigation-bar">
         <div class="navigation-buttons">
@@ -50,16 +52,41 @@
 
     <!-- Menu Contextual Customizado -->
     <div v-if="contextMenuVisible" :style="contextMenuStyle" class="context-menu">
-      <button @click="confirmDownload">Download</button>
+      <select @change="handleContextMenuSelection" v-model="selectedAction">
+        <option value="">Select action</option>
+        <option value="download">Download</option>
+        <option value="delete">Delete</option>
+        <option v-if="isEditableFile(fileToDownload)" value="edit">Edit</option>
+      </select>
     </div>
 
     <div v-if="uploadResponse" class="upload-response">
       <p>{{ uploadResponse }}</p>
     </div>
+
+    <!-- Editor de Arquivos (Ace Editor) -->
+    <div v-if="isEditing" class="editor-container">
+      <div id="editor" ref="aceEditor" style="height: 400px;"></div>
+      <button @click="saveEdit">Save</button>
+      <button @click="cancelEdit">Cancel</button>
+    </div>
   </div>
 </template>
 
 <script>
+import ace from 'ace-builds/src-noconflict/ace';
+import 'ace-builds/src-noconflict/mode-javascript';
+import 'ace-builds/src-noconflict/theme-monokai';
+
+// Atualizar a configuração do basePath do Ace Editor
+ace.config.set('basePath', '/js/ace'); // Caminho que aponta para a pasta pública onde os workers estão localizados
+ace.config.setModuleUrl('ace/mode/javascript_worker', '/js/ace/worker-javascript.js');
+
+// Importar os arquivos de worker necessários
+import 'ace-builds/src-noconflict/worker-javascript';
+
+ace.config.set('basePath', '/node_modules/ace-builds/src-noconflict');
+
 export default {
   name: "FileMapping",
   data() {
@@ -74,8 +101,13 @@ export default {
         left: "0px",
       },
       fileToDownload: "", // Armazena o arquivo a ser baixado
+      fileToDelete: "", // Armazena o arquivo a ser deletado
       undoStack: [], // Pilha de caminhos para voltar
       redoStack: [], // Pilha de caminhos para avançar
+      selectedAction: "", // Ação selecionada no dropdown
+      isEditing: false, // Estado de edição de arquivos
+      editorInstance: null, // Instância do Ace Editor
+      fileContent: "", // Conteúdo do arquivo sendo editado
     };
   },
   computed: {
@@ -211,15 +243,112 @@ export default {
         left: `${event.clientX}px`,
       };
       this.fileToDownload = file; // Armazenar o arquivo que o usuário deseja baixar
+      this.fileToDelete = file; // Armazenar o arquivo que o usuário deseja deletar
     },
-    hideContextMenu() {
-      // Esconder o menu de contexto
-      this.contextMenuVisible = false;
+    hideContextMenu(event) {
+      // Verificar se o clique foi fora do menu contextual
+      if (!event || (this.contextMenuVisible && event.target.closest('.context-menu') === null)) {
+        this.contextMenuVisible = false;
+        this.selectedAction = ""; // Resetar a ação selecionada
+      }
     },
-    confirmDownload() {
-      // Confirmar o download do arquivo ou pasta selecionado
-      this.downloadFile(this.fileToDownload);
+    handleContextMenuSelection() {
+      if (this.selectedAction === "download") {
+        this.downloadFile(this.fileToDownload);
+      } else if (this.selectedAction === "delete") {
+        this.deleteFile(this.fileToDelete);
+      } else if (this.selectedAction === "edit") {
+        this.editFile(this.fileToDownload);
+      }
       this.hideContextMenu();
+    },
+    isEditableFile(fileName) {
+      return fileName.endsWith(".csv") || fileName.endsWith(".txt");
+    },
+    editFile(fileName) {
+      // Construir o caminho completo do arquivo para edição
+      const completePath = this.currentPath ? `${this.currentPath}/${fileName}` : fileName;
+      const editUrl = `/api/file/download?path=${encodeURIComponent(completePath)}`;
+
+      fetch(editUrl)
+          .then((response) => response.text())
+          .then((content) => {
+            this.fileContent = content;
+            this.isEditing = true;
+
+            // Esperar até que o editor esteja disponível no DOM
+            this.$nextTick(() => {
+              if (!this.editorInstance) {
+                this.editorInstance = ace.edit(this.$refs.aceEditor);
+                this.editorInstance.session.setMode('ace/mode/javascript');
+                this.editorInstance.setTheme('ace/theme/monokai');
+                this.editorInstance.setValue(this.fileContent);
+              } else {
+                this.editorInstance.setValue(this.fileContent);
+              }
+            });
+          })
+          .catch((error) => {
+            alert("Error: " + error.message);
+          });
+    },
+    saveEdit() {
+      const updatedContent = this.editorInstance.getValue();
+      const formData = new FormData();
+      formData.append("content", updatedContent);
+
+      const saveUrl = `/api/file/save?path=${encodeURIComponent(this.currentPath + "/" + this.fileToDownload)}`;
+
+      fetch(saveUrl, {
+        method: "POST",
+        body: formData,
+      })
+          .then((response) => {
+            if (!response.ok) {
+              throw new Error("Error saving file");
+            }
+            return response.text();
+          })
+          .then((message) => {
+            alert(message);
+            this.isEditing = false;
+            this.listFiles(); // Atualizar lista de arquivos
+          })
+          .catch((error) => {
+            alert("Error: " + error.message);
+          });
+    },
+    cancelEdit() {
+      // Cancelar a edição e esconder o editor
+      if (this.editorInstance) {
+        this.editorInstance.destroy();
+        this.editorInstance = null;
+      }
+      this.isEditing = false; // Atualizar o estado para não estar mais editando
+    },
+    deleteFile(fileName) {
+      // Construir o caminho completo do arquivo para deletar
+      const completePath = this.currentPath ? `${this.currentPath}/${fileName}` : fileName;
+
+      // Atualizar a URL para utilizar o prefixo /api
+      const deleteUrl = `/api/file/delete?path=${encodeURIComponent(completePath)}`;
+
+      fetch(deleteUrl, {
+        method: "DELETE",
+      })
+          .then((response) => {
+            if (!response.ok) {
+              throw new Error(`Error deleting file: ${response.statusText}`);
+            }
+            return response.text();
+          })
+          .then((data) => {
+            alert(data);
+            this.listFiles(); // Atualizar a lista de arquivos após a exclusão bem-sucedida
+          })
+          .catch((error) => {
+            alert("Error: " + error.message);
+          });
     },
   },
 };
@@ -230,9 +359,11 @@ export default {
 .file-enter-active {
   animation: fadeIn 0.6s ease-out;
 }
+
 .file-leave-active {
   animation: fadeOut 0.6s ease-in;
 }
+
 @keyframes fadeIn {
   0% {
     opacity: 0;
@@ -243,6 +374,7 @@ export default {
     transform: translateY(0);
   }
 }
+
 @keyframes fadeOut {
   0% {
     opacity: 1;
@@ -271,6 +403,7 @@ export default {
   gap: 10px;
   margin-bottom: 10px;
 }
+
 .navigation-buttons button {
   background: none;
   border: none;
@@ -278,6 +411,7 @@ export default {
   font-size: 1em; /* Tamanho do texto */
   padding: 5px;
 }
+
 .navigation-buttons button:disabled {
   color: #ccc;
   cursor: not-allowed;
@@ -287,5 +421,10 @@ export default {
 .upload-response {
   margin-top: 10px;
   color: #008000; /* Verde para indicar uma mensagem positiva */
+}
+
+/* Estilo do Editor de Arquivos */
+.editor-container {
+  margin-top: 20px;
 }
 </style>
