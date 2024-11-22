@@ -12,10 +12,7 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.MalformedURLException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
+import java.nio.file.*;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -73,6 +70,24 @@ public class FileController {
             return ResponseEntity.ok("File unzipped successfully: " + zipFilePath.getFileName());
         } catch (IOException e) {
             return ResponseEntity.status(500).body("Could not unzip file: " + e.getMessage());
+        }
+    }
+    @PostMapping("/save")
+    public ResponseEntity<String> saveFile(@RequestParam("path") String path,
+                                           @RequestParam("content") String content) {
+        try {
+            Path filePath = Paths.get("uploads").resolve(path).normalize();
+
+            // Valide se o arquivo realmente existe
+            if (!Files.exists(filePath)) {
+                return ResponseEntity.status(404).body("File not found: " + path);
+            }
+
+            // Gravar o conteúdo no arquivo
+            Files.write(filePath, content.getBytes(), StandardOpenOption.TRUNCATE_EXISTING);
+            return ResponseEntity.ok("File saved successfully: " + path);
+        } catch (IOException e) {
+            return ResponseEntity.status(500).body("Could not save file: " + e.getMessage());
         }
     }
 

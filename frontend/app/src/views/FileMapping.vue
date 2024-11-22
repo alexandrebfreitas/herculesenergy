@@ -78,7 +78,7 @@
 
 <script>
 import ace from 'ace-builds/src-noconflict/ace';
-import 'ace-builds/src-noconflict/mode-javascript';
+import 'ace-builds/src-noconflict/mode-plain_text';
 import 'ace-builds/src-noconflict/theme-monokai';
 import JSZip from 'jszip';
 
@@ -384,7 +384,6 @@ export default {
       return !fileName.endsWith('/') && !fileName.toLowerCase().endsWith('.zip'); // Permitir que qualquer tipo de arquivo seja aberto para edição, exceto pastas e ZIPs
     },
     editFile(fileName) {
-      // Construir o caminho completo do arquivo para edição
       const completePath = this.currentPath ? `${this.currentPath}/${fileName}` : fileName;
       const editUrl = `/api/file/download?path=${encodeURIComponent(completePath)}`;
 
@@ -392,6 +391,7 @@ export default {
           .then((response) => response.text())
           .then((content) => {
             this.fileContent = content;
+            this.fileToDownload = fileName; // Armazena o arquivo que está sendo editado
             this.isEditing = true;
 
             // Esperar até que o editor esteja disponível no DOM
@@ -400,10 +400,10 @@ export default {
                 this.editorInstance = ace.edit(this.$refs.aceEditor);
                 this.editorInstance.session.setMode('ace/mode/javascript');
                 this.editorInstance.setTheme('ace/theme/monokai');
-                this.editorInstance.setValue(this.fileContent);
-              } else {
-                this.editorInstance.setValue(this.fileContent);
               }
+
+              // Atualizar o conteúdo no editor
+              this.editorInstance.setValue(this.fileContent, -1); // O parâmetro `-1` mantém o cursor no início do arquivo
             });
           })
           .catch((error) => {
@@ -430,6 +430,9 @@ export default {
           .then((message) => {
             alert(message);
             this.isEditing = false;
+
+            // Reinicializar o editor para a próxima edição
+            this.cancelEdit();
             this.listFiles(); // Atualizar lista de arquivos
           })
           .catch((error) => {
@@ -437,12 +440,13 @@ export default {
           });
     },
     cancelEdit() {
-      // Cancelar a edição e esconder o editor
+      // Cancelar a edição e destruir o editor
       if (this.editorInstance) {
         this.editorInstance.destroy();
         this.editorInstance = null;
       }
-      this.isEditing = false; // Atualizar o estado para não estar mais editando
+      this.isEditing = false;
+      this.fileContent = ""; // Resetar o conteúdo
     },
     deleteFile(fileName) {
       // Construir o caminho completo do arquivo para deletar
