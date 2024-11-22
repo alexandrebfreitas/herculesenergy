@@ -4,15 +4,14 @@
 
     <!-- Navigation Bar and File List -->
     <div>
-      <h2>Navigation</h2>
-
-      <!-- Botões Undo, Redo e Upload ao lado da barra de navegação -->
+      <!-- Botões Undo, Redo, Upload e Criar Pasta ao lado da barra de navegação -->
       <div class="navigation-bar">
         <div class="navigation-buttons">
+          <input type="file" ref="fileInput" style="display: none;" @change="uploadFile" />
           <button @click="undo" :disabled="undoStack.length === 0">↩️</button>
           <button @click="redo" :disabled="redoStack.length === 0">↪️</button>
           <button @click="triggerFileInput">📤</button>
-          <input type="file" ref="fileInput" style="display: none;" @change="uploadFile" />
+          <button @click="createFolder">📁</button>
         </div>
 
         <!-- Barra de navegação para mostrar o caminho atual -->
@@ -57,6 +56,7 @@
         <option value="download">Download</option>
         <option value="delete">Delete</option>
         <option v-if="isEditableFile(fileToDownload)" value="edit">Edit</option>
+        <option v-if="fileToDownload.endsWith('.zip')" value="unzip">Unzip</option>
       </select>
     </div>
 
@@ -84,6 +84,7 @@ ace.config.setModuleUrl('ace/mode/javascript_worker', '/js/ace/worker-javascript
 
 // Importar os arquivos de worker necessários
 import 'ace-builds/src-noconflict/worker-javascript';
+import JSZip from 'jszip';
 
 ace.config.set('basePath', '/node_modules/ace-builds/src-noconflict');
 
@@ -124,6 +125,118 @@ export default {
     triggerFileInput() {
       // Disparar a seleção de arquivo
       this.$refs.fileInput.click();
+    },
+    triggerUnzipInput() {
+      // Disparar a seleção de arquivo ZIP para descompactar
+      this.$refs.unzipInput.click();
+    },
+    unzipFile(fileName) {
+      // Construir o caminho completo do arquivo ZIP
+      const completePath = this.currentPath ? `${this.currentPath}/${fileName}` : fileName;
+
+      // Verificar se o arquivo é um ZIP
+      if (!fileName.toLowerCase().endsWith(".zip")) {
+        alert("Please select a ZIP file.");
+        return;
+      }
+
+      // Pegar o arquivo ZIP do servidor
+      const zipUrl = `/api/file/download?path=${encodeURIComponent(completePath)}`;
+      fetch(zipUrl)
+          .then((response) => {
+            if (!response.ok) {
+              throw new Error("ZIP file not found");
+            }
+            return response.blob();
+          })
+          .then((blob) => {
+            const zip = new JSZip();
+            return zip.loadAsync(blob);
+          })
+          .then((zipContent) => {
+            // Criar uma pasta com o mesmo nome do arquivo ZIP (sem a extensão .zip)
+            const folderName = fileName.replace(/\.zip$/i, "");
+            const folderPath = this.currentPath ? `${this.currentPath}/${folderName}` : folderName;
+
+            // Chamar o método para criar a pasta
+            this.createFolderWithName(folderName).then(() => {
+              // Extrair arquivos do ZIP e enviar para o servidor
+              zipContent.forEach((relativePath, zipEntry) => {
+                zipEntry.async("blob").then((fileData) => {
+                  const newFile = new File([fileData], relativePath);
+                  this.uploadFileToFolder(newFile, folderPath);
+                });
+              });
+              alert(`Files unzipped successfully into folder: ${folderName}`);
+              this.listFiles(); // Atualizar a lista de arquivos
+            });
+          })
+          .catch((error) => {
+            console.error("Erro ao descompactar o arquivo:", error);
+          });
+    },
+    createFolderWithName(folderName) {
+      return new Promise((resolve, reject) => {
+        const createFolderUrl = `/api/file/create-folder?path=${encodeURIComponent(this.currentPath)}`;
+        const formData = new FormData();
+        formData.append("folderName", folderName);
+
+        fetch(createFolderUrl, {
+          method: "POST",
+          body: formData,
+        })
+            .then((response) => response.text())
+            .then((data) => {
+              console.log(data);
+              resolve();
+            })
+            .catch((error) => {
+              alert("Error: " + error.message);
+              reject(error);
+            });
+      });
+    },
+    uploadFileToFolder(file, folderPath) {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      // Adicionar o caminho atual ao endpoint de upload
+      let uploadUrl = `/api/file/upload`;
+      const uploadPath = folderPath || ""; // Se folderPath for vazio, significa a raiz
+      formData.append("path", uploadPath);
+
+      fetch(uploadUrl, {
+        method: "POST",
+        body: formData,
+      })
+          .then((response) => response.text())
+          .then((data) => {
+            console.log(`File ${file.name} uploaded successfully: ${data}`);
+          })
+          .catch((error) => {
+            console.error(`Error uploading file ${file.name}: `, error.message);
+          });
+    },
+    createFolder() {
+      const folderName = prompt("Enter the name of the new folder:");
+      if (!folderName) return;
+
+      const createFolderUrl = `/api/file/create-folder?path=${encodeURIComponent(this.currentPath)}`;
+      const formData = new FormData();
+      formData.append("folderName", folderName);
+
+      fetch(createFolderUrl, {
+        method: "POST",
+        body: formData,
+      })
+          .then((response) => response.text())
+          .then((data) => {
+            alert(data);
+            this.listFiles(); // Atualizar a lista de arquivos após a criação da pasta
+          })
+          .catch((error) => {
+            alert("Error: " + error.message);
+          });
     },
     uploadFile(event) {
       const file = event.target.files[0];
@@ -259,6 +372,8 @@ export default {
         this.deleteFile(this.fileToDelete);
       } else if (this.selectedAction === "edit") {
         this.editFile(this.fileToDownload);
+      } else if (this.selectedAction === "unzip") {
+        this.unzipFile(this.fileToDownload);
       }
       this.hideContextMenu();
     },
@@ -349,7 +464,7 @@ export default {
           .catch((error) => {
             alert("Error: " + error.message);
           });
-    },
+    }
   },
 };
 </script>

@@ -1,4 +1,4 @@
-package com.example.api.controller;
+package com.example.api.Controller;
 
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -8,6 +8,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.MalformedURLException;
@@ -19,12 +20,12 @@ import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
 
 @Controller
 @RequestMapping("/file")
 public class FileController {
-
     // Endpoint para upload de arquivos
     @PostMapping("/upload")
     public ResponseEntity<String> uploadFile(@RequestParam("file") MultipartFile file,
@@ -37,6 +38,41 @@ public class FileController {
             return ResponseEntity.ok("File uploaded successfully: " + file.getOriginalFilename());
         } catch (Exception e) {
             return ResponseEntity.status(500).body("Could not upload file: " + file.getOriginalFilename() + ". Error: " + e.getMessage());
+        }
+    }
+    @PostMapping("/unzip")
+    public ResponseEntity<String> unzipFile(@RequestParam("path") String path) {
+        System.out.println("Path received for unzipping: " + path); // Log para ver o caminho recebido
+        try {
+            Path zipFilePath = Paths.get("uploads").resolve(path).normalize();
+
+            // Verifica se o arquivo ZIP existe
+            if (!Files.exists(zipFilePath) || !zipFilePath.toString().endsWith(".zip")) {
+                return ResponseEntity.status(404).body("ZIP file not found: " + path);
+            }
+
+            // Define o diretório de extração
+            Path extractDir = zipFilePath.getParent().resolve(zipFilePath.getFileName().toString().replace(".zip", ""));
+            Files.createDirectories(extractDir);
+
+            // Extrai o conteúdo do ZIP
+            try (ZipInputStream zis = new ZipInputStream(new FileInputStream(zipFilePath.toFile()))) {
+                ZipEntry zipEntry;
+                while ((zipEntry = zis.getNextEntry()) != null) {
+                    Path newFilePath = extractDir.resolve(zipEntry.getName()).normalize();
+                    if (zipEntry.isDirectory()) {
+                        Files.createDirectories(newFilePath);
+                    } else {
+                        Files.createDirectories(newFilePath.getParent());
+                        Files.copy(zis, newFilePath, StandardCopyOption.REPLACE_EXISTING);
+                    }
+                    zis.closeEntry();
+                }
+            }
+
+            return ResponseEntity.ok("File unzipped successfully: " + zipFilePath.getFileName());
+        } catch (IOException e) {
+            return ResponseEntity.status(500).body("Could not unzip file: " + e.getMessage());
         }
     }
 
@@ -100,6 +136,7 @@ public class FileController {
         }
     }
 
+
     @GetMapping("/zip-folder")
     public ResponseEntity<Resource> zipFolder(@RequestParam("path") String path) {
         try {
@@ -136,6 +173,22 @@ public class FileController {
             }
         } catch (IOException e) {
             return ResponseEntity.status(500).body(null);
+        }
+    }
+    // Endpoint para criar uma nova pasta
+    @PostMapping("/create-folder")
+    public ResponseEntity<String> createFolder(@RequestParam("folderName") String folderName,
+                                               @RequestParam(value = "path", defaultValue = "") String path) {
+        try {
+            Path folderPath = Paths.get("uploads").resolve(path).resolve(folderName).normalize();
+            if (!Files.exists(folderPath)) {
+                Files.createDirectories(folderPath);
+                return ResponseEntity.ok("Folder created successfully: " + folderName);
+            } else {
+                return ResponseEntity.status(400).body("Folder already exists: " + folderName);
+            }
+        } catch (IOException e) {
+            return ResponseEntity.status(500).body("Could not create folder: " + folderName + ". Error: " + e.getMessage());
         }
     }
 }

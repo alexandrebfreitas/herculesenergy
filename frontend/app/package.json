@@ -22,6 +22,7 @@
     "datatables.net": "^2.1.8",
     "datatables.net-dt": "^2.1.8",
     "jquery": "^3.7.1",
+    "jszip": "^3.10.1",
     "leaflet": "^1.9.4",
     "monaco-editor": "^0.52.0",
     "shpjs": "^6.1.0",
