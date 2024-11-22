@@ -2,50 +2,60 @@
   <div @click="hideContextMenu($event)">
     <h1>File Upload, Download, and Edit</h1>
 
-    <!-- Navigation Bar and File List -->
-    <div>
-      <!-- Botões Undo, Redo, Upload e Criar Pasta ao lado da barra de navegação -->
-      <div class="navigation-bar">
-        <div class="navigation-buttons">
-          <input type="file" ref="fileInput" style="display: none;" @change="uploadFile" />
-          <button @click="undo" :disabled="undoStack.length === 0">↩️</button>
-          <button @click="redo" :disabled="redoStack.length === 0">↪️</button>
-          <button @click="triggerFileInput">📤</button>
-          <button @click="createFolder">📁</button>
+    <!-- Container principal que envolve lista de arquivos e editor -->
+    <div class="main-container">
+      <!-- Lista de Arquivos -->
+      <div class="file-list-container">
+        <!-- Botões Undo, Redo, Upload e Criar Pasta ao lado da barra de navegação -->
+        <div class="navigation-bar">
+          <div class="navigation-buttons">
+            <input type="file" ref="fileInput" style="display: none;" @change="uploadFile" />
+            <button @click="undo" :disabled="undoStack.length === 0">↩️</button>
+            <button @click="redo" :disabled="redoStack.length === 0">↪️</button>
+            <button @click="triggerFileInput">📤</button>
+            <button @click="createFolder">📁</button>
+          </div>
+
+          <!-- Barra de navegação para mostrar o caminho atual -->
+          <nav v-if="currentPathParts.length">
+            <span v-for="(part, index) in currentPathParts" :key="index">
+              <span @click="navigateDirectly(index)" style="cursor: pointer; text-decoration: underline;">
+                {{ part || "Root" }}
+              </span>
+              <span v-if="index < currentPathParts.length - 1"> > </span>
+            </span>
+          </nav>
         </div>
 
-        <!-- Barra de navegação para mostrar o caminho atual -->
-        <nav v-if="currentPathParts.length">
-          <span v-for="(part, index) in currentPathParts" :key="index">
-            <span @click="navigateDirectly(index)" style="cursor: pointer; text-decoration: underline;">
-              {{ part || "Root" }}
-            </span>
-            <span v-if="index < currentPathParts.length - 1"> > </span>
-          </span>
-        </nav>
+        <!-- Lista de Arquivos e Pastas -->
+        <div v-if="files.length > 0">
+          <ul>
+            <transition-group name="file" tag="ul">
+              <li v-for="file in files" :key="file" class="file-item">
+                <span
+                    @click="navigateTo(file)"
+                    @contextmenu.prevent="showContextMenu($event, file)"
+                    style="cursor: pointer; text-decoration: underline;"
+                >
+                  <!-- Exibir ícone para pasta ou arquivo -->
+                  <span v-if="file.endsWith('/')">📁</span>
+                  <span v-else>📄</span>
+                  {{ file }}
+                </span>
+              </li>
+            </transition-group>
+          </ul>
+        </div>
+        <div v-else>
+          <p>No files or folders found in the current directory.</p>
+        </div>
       </div>
 
-      <!-- Lista de Arquivos e Pastas -->
-      <div v-if="files.length > 0">
-        <ul>
-          <transition-group name="file" tag="ul">
-            <li v-for="file in files" :key="file" class="file-item">
-              <span
-                  @click="navigateTo(file)"
-                  @contextmenu.prevent="showContextMenu($event, file)"
-                  style="cursor: pointer; text-decoration: underline;"
-              >
-                <!-- Exibir ícone para pasta ou arquivo -->
-                <span v-if="file.endsWith('/')">📁</span>
-                <span v-else>📄</span>
-                {{ file }}
-              </span>
-            </li>
-          </transition-group>
-        </ul>
-      </div>
-      <div v-else>
-        <p>No files or folders found in the current directory.</p>
+      <!-- Editor de Arquivos (Ace Editor) -->
+      <div v-if="isEditing" class="editor-container">
+        <div id="editor" ref="aceEditor" style="height: 400px; width: 100%;"></div>
+        <button @click="saveEdit">Save</button>
+        <button @click="cancelEdit">Cancel</button>
       </div>
     </div>
 
@@ -63,13 +73,6 @@
     <div v-if="uploadResponse" class="upload-response">
       <p>{{ uploadResponse }}</p>
     </div>
-
-    <!-- Editor de Arquivos (Ace Editor) -->
-    <div v-if="isEditing" class="editor-container">
-      <div id="editor" ref="aceEditor" style="height: 400px;"></div>
-      <button @click="saveEdit">Save</button>
-      <button @click="cancelEdit">Cancel</button>
-    </div>
   </div>
 </template>
 
@@ -77,6 +80,7 @@
 import ace from 'ace-builds/src-noconflict/ace';
 import 'ace-builds/src-noconflict/mode-javascript';
 import 'ace-builds/src-noconflict/theme-monokai';
+import JSZip from 'jszip';
 
 // Atualizar a configuração do basePath do Ace Editor
 ace.config.set('basePath', '/js/ace'); // Caminho que aponta para a pasta pública onde os workers estão localizados
@@ -84,7 +88,6 @@ ace.config.setModuleUrl('ace/mode/javascript_worker', '/js/ace/worker-javascript
 
 // Importar os arquivos de worker necessários
 import 'ace-builds/src-noconflict/worker-javascript';
-import JSZip from 'jszip';
 
 ace.config.set('basePath', '/node_modules/ace-builds/src-noconflict');
 
@@ -378,7 +381,7 @@ export default {
       this.hideContextMenu();
     },
     isEditableFile(fileName) {
-      return fileName.endsWith(".csv") || fileName.endsWith(".txt");
+      return !fileName.endsWith('/') && !fileName.toLowerCase().endsWith('.zip'); // Permitir que qualquer tipo de arquivo seja aberto para edição, exceto pastas e ZIPs
     },
     editFile(fileName) {
       // Construir o caminho completo do arquivo para edição
@@ -470,6 +473,25 @@ export default {
 </script>
 
 <style scoped>
+/* Container principal para a lista de arquivos e o editor */
+.main-container {
+  display: flex;
+  gap: 20px;
+}
+
+/* Container da lista de arquivos */
+.file-list-container {
+  flex: 1; /* Ocupar metade do espaço */
+}
+
+/* Container do editor */
+.editor-container {
+  flex: 1; /* Ocupar metade do espaço */
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
 /* Estilo da animação para novos arquivos */
 .file-enter-active {
   animation: fadeIn 0.6s ease-out;
