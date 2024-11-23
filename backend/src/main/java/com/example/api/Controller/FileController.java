@@ -14,7 +14,9 @@ import java.io.IOException;
 import java.net.MalformedURLException;
 import java.nio.file.*;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
@@ -204,6 +206,23 @@ public class FileController {
             }
         } catch (IOException e) {
             return ResponseEntity.status(500).body("Could not create folder: " + folderName + ". Error: " + e.getMessage());
+        }
+    }
+    @PostMapping("/move")
+    public ResponseEntity<String> moveFile(
+            @RequestParam("fileName") String fileName,
+            @RequestParam("from") String from,
+            @RequestParam("to") String to) {
+        try {
+            Path sourcePath = Paths.get("uploads").resolve(from).resolve(fileName).normalize();
+            Path targetPath = Paths.get("uploads").resolve(to).resolve(fileName).normalize();
+
+            Files.createDirectories(targetPath.getParent());
+            Files.move(sourcePath, targetPath, StandardCopyOption.REPLACE_EXISTING);
+
+            return ResponseEntity.ok("File moved successfully from " + from + " to " + to);
+        } catch (IOException e) {
+            return ResponseEntity.status(500).body("Could not move file: " + e.getMessage());
         }
     }
 }

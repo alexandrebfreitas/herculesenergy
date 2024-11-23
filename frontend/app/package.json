@@ -29,6 +29,7 @@
     "vue": "^3.2.13",
     "vue-router": "^4.4.5",
     "vue3-leaflet": "^1.0.50",
+    "vuedraggable": "^4.1.0",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
