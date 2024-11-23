@@ -208,21 +208,41 @@ public class FileController {
             return ResponseEntity.status(500).body("Could not create folder: " + folderName + ". Error: " + e.getMessage());
         }
     }
-    @PostMapping("/move")
-    public ResponseEntity<String> moveFile(
-            @RequestParam("fileName") String fileName,
-            @RequestParam("from") String from,
-            @RequestParam("to") String to) {
+    @RequestMapping(value = "/move", method = RequestMethod.POST, produces = "application/json")
+    public ResponseEntity<Map<String, String>> moveFile(@RequestBody Map<String, String> payload) {
+        String fileName = payload.get("fileName");
+        String from = payload.get("from");
+        String to = payload.get("to");
+
+        Map<String, String> response = new HashMap<>();
+
+        if (fileName == null || from == null || to == null) {
+            response.put("status", "error");
+            response.put("message", "Missing required parameters.");
+            return ResponseEntity.badRequest().body(response);
+        }
+
         try {
             Path sourcePath = Paths.get("uploads").resolve(from).resolve(fileName).normalize();
             Path targetPath = Paths.get("uploads").resolve(to).resolve(fileName).normalize();
 
+            if (!Files.exists(sourcePath)) {
+                response.put("status", "error");
+                response.put("message", "Source file not found: " + sourcePath);
+                return ResponseEntity.status(404).body(response);
+            }
+
             Files.createDirectories(targetPath.getParent());
             Files.move(sourcePath, targetPath, StandardCopyOption.REPLACE_EXISTING);
 
-            return ResponseEntity.ok("File moved successfully from " + from + " to " + to);
+            response.put("status", "success");
+            response.put("message", "File moved successfully from " + from + " to " + to);
+            return ResponseEntity.ok(response);
         } catch (IOException e) {
-            return ResponseEntity.status(500).body("Could not move file: " + e.getMessage());
+            response.put("status", "error");
+            response.put("message", "Could not move file: " + e.getMessage());
+            return ResponseEntity.status(500).body(response);
         }
     }
+
 }

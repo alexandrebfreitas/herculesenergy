@@ -14,6 +14,7 @@
             v-model="folder.items"
             group="folders"
             class="card-list"
+            :item-key="'name'"
             @end="onDragEnd"
         >
           <template #item="{ element }">
@@ -79,36 +80,63 @@ export default {
               isFolder: item.endsWith("/"), // Define se é uma pasta
             }));
           })
-          .catch((error) => console.error(`Error loading items for ${folder.name}:`, error));
+          .catch((error) =>
+              console.error(`Error loading items for ${folder.name}:`, error)
+          );
     },
-    // Manipula o fim do drag-and-drop e atualiza os dados no backend
     onDragEnd(event) {
-      if (!event.item || event.from === undefined || event.to === undefined) {
+      if (!event.item || !event.from || !event.to) {
         console.error("Invalid drag-and-drop event data.");
         return;
       }
 
-      const movedItem = event.item;
-      const fromFolder = this.folders[event.from.dataset.folderIndex];
-      const toFolder = this.folders[event.to.dataset.folderIndex];
+      const movedItem = event.item._underlying_vm_ || event.item; // Verifica o objeto correto
+      const fileName = movedItem.name;
 
-      if (!movedItem || !fromFolder || !toFolder) {
+      if (!fileName) {
+        console.error("File name is missing in moved item:", movedItem);
+        return;
+      }
+
+      const fromFolderIndex = event.from.closest(".board").dataset.folderIndex;
+      const toFolderIndex = event.to.closest(".board").dataset.folderIndex;
+
+      const fromFolder = this.folders[fromFolderIndex];
+      const toFolder = this.folders[toFolderIndex];
+
+      if (!fromFolder || !toFolder) {
         console.error("Could not determine source or destination folder.");
         return;
       }
 
-      fetch(`/api/file/move`, {
+      const fromFolderPath = `${this.basePath}/${fromFolder.name}`;
+      const toFolderPath = `${this.basePath}/${toFolder.name}`;
+
+      // Define o payload com os 3 parâmetros
+      const payload = {
+        fileName: fileName,
+        from: fromFolderPath,
+        to: toFolderPath,
+      };
+
+      // Corrige a URL para incluir o prefixo `/api`
+      const moveFileUrl = `/api/file/move`;
+
+      // Envia a requisição ao back-end
+      fetch(moveFileUrl, {
         method: "POST",
-        body: JSON.stringify({
-          fileName: movedItem.name,
-          from: `${this.basePath}/${fromFolder.name}`,
-          to: `${this.basePath}/${toFolder.name}`,
-        }),
         headers: {
-          "Content-Type": "application/json",
+          "Content-Type": "application/json", // Indica que o payload é JSON
         },
+        body: JSON.stringify(payload), // Converte o objeto para JSON
       })
-          .then(() => this.loadFolders())
+          .then((response) => {
+            if (!response.ok) {
+              return response.text().then((error) => {
+                console.error("Error moving file:", error);
+              });
+            }
+          })
           .catch((error) => console.error("Error moving file:", error));
     },
     // Adiciona uma nova pasta ao estudo selecionado
@@ -116,18 +144,21 @@ export default {
       const folderName = prompt("Enter the name of the new folder:");
       if (!folderName) return;
 
-      fetch(`/api/file/create-folder?folderName=${encodeURIComponent(folderName)}&path=${encodeURIComponent(this.basePath)}`, {
-        method: "POST",
-      })
+      fetch(
+          `/api/file/create-folder?folderName=${encodeURIComponent(
+              folderName
+          )}&path=${encodeURIComponent(this.basePath)}`,
+          {
+            method: "POST",
+          }
+      )
           .then((response) => {
-            if (response.ok) {
-              alert(`Folder "${folderName}" created successfully!`);
-              this.loadFolders();
-            } else {
+            if (!response.ok) {
               return response.text().then((error) => {
-                alert(`Error creating folder: ${error}`);
+                console.error(`Error creating folder: ${error}`);
               });
             }
+            this.loadFolders();
           })
           .catch((error) => console.error("Error creating folder:", error));
     },
