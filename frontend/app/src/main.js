@@ -22,6 +22,11 @@ import {
 import $ from "jquery";
 import './assets/main.css';
 window.$ = $; // Adiciona jQuery como global (necessário para DataTables)
+// Importe o CSS do Bootstrap
+import 'bootstrap/dist/css/bootstrap.min.css'
+
+// Importe o JS do Bootstrap
+import 'bootstrap'
 
 // Adicione os ícones à biblioteca
 library.add(

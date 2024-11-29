@@ -1,5 +1,7 @@
 {
   "dependencies": {
-    "jszip": "^3.10.1"
+    "ace-builds": "^1.36.5",
+    "jszip": "^3.10.1",
+    "vue3-ace-editor": "^2.2.4"
   }
 }

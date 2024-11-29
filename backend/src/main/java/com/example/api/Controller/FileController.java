@@ -1,5 +1,6 @@
 package com.example.api.Controller;
 
+import com.example.api.DTO.FileInfoDTO;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.core.io.Resource;
@@ -114,22 +115,51 @@ public class FileController {
 
     // Endpoint para listar arquivos e pastas em um diretório específico
     @GetMapping("/list")
-    public ResponseEntity<List<String>> listFiles(@RequestParam(value = "path", defaultValue = "") String path) {
+    public ResponseEntity<List<FileInfoDTO>> listFiles(@RequestParam(value = "path", defaultValue = "") String path) {
         try {
-            Path baseDir = Paths.get("uploads").resolve(path).normalize(); // Resolve o caminho relativo dentro de uploads
+            Path baseDir = Paths.get("uploads").resolve(path).normalize();
             if (!Files.exists(baseDir)) {
-                return ResponseEntity.status(404).body(List.of("Directory not found"));
+                return ResponseEntity.status(404).body(Collections.emptyList());
             }
 
-            List<String> fileNames = Files.list(baseDir)
-                    .map(p -> p.getFileName().toString() + (Files.isDirectory(p) ? "/" : "")) // Adiciona '/' ao final das pastas
+            List<FileInfoDTO> fileInfos = Files.list(baseDir)
+                    .map(p -> {
+                        String name = p.getFileName().toString();
+                        boolean isFolder = Files.isDirectory(p);
+                        long size = 0;
+                        try {
+                            if (isFolder) {
+                                // Opcionalmente, calcular o tamanho total da pasta
+                                size = Files.walk(p)
+                                        .filter(Files::isRegularFile)
+                                        .mapToLong(f -> {
+                                            try {
+                                                return Files.size(f);
+                                            } catch (IOException e) {
+                                                e.printStackTrace();
+                                                return 0L;
+                                            }
+                                        }).sum();
+                            } else {
+                                size = Files.size(p);
+                            }
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+
+                        // Obter o caminho relativo em relação ao diretório base
+                        String relativePath = baseDir.relativize(p).toString().replace("\\", "/");
+
+                        return new FileInfoDTO(name, isFolder, size, relativePath);
+                    })
                     .collect(Collectors.toList());
 
-            return ResponseEntity.ok(fileNames);
+            return ResponseEntity.ok(fileInfos);
         } catch (IOException e) {
-            return ResponseEntity.status(500).body(List.of("Error: " + e.getMessage()));
+            return ResponseEntity.status(500).body(Collections.emptyList());
         }
     }
+
     @DeleteMapping("/delete")
     public ResponseEntity<String> deleteFile(@RequestParam("path") String path) {
         try {
@@ -242,6 +272,25 @@ public class FileController {
             response.put("status", "error");
             response.put("message", "Could not move file: " + e.getMessage());
             return ResponseEntity.status(500).body(response);
+        }
+    }
+    @PostMapping("/rename")
+    public ResponseEntity<String> renameFile(
+            @RequestParam("oldPath") String oldPath,
+            @RequestParam("newPath") String newPath) {
+        try {
+            Path sourcePath = Paths.get("uploads").resolve(oldPath).normalize();
+            Path targetPath = Paths.get("uploads").resolve(newPath).normalize();
+
+            if (!Files.exists(sourcePath)) {
+                return ResponseEntity.status(404).body("File not found: " + oldPath);
+            }
+
+            Files.move(sourcePath, targetPath, StandardCopyOption.REPLACE_EXISTING);
+
+            return ResponseEntity.ok("File renamed successfully from " + oldPath + " to " + newPath);
+        } catch (IOException e) {
+            return ResponseEntity.status(500).body("Could not rename file: " + e.getMessage());
         }
     }
 

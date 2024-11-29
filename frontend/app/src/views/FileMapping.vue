@@ -80,16 +80,14 @@
 import ace from 'ace-builds/src-noconflict/ace';
 import 'ace-builds/src-noconflict/mode-plain_text';
 import 'ace-builds/src-noconflict/theme-monokai';
+import 'ace-builds/src-noconflict/worker-javascript'; // Import workers as needed
 import JSZip from 'jszip';
 
-// Atualizar a configuração do basePath do Ace Editor
-ace.config.set('basePath', '/js/ace'); // Caminho que aponta para a pasta pública onde os workers estão localizados
-ace.config.setModuleUrl('ace/mode/javascript_worker', '/js/ace/worker-javascript.js');
-
-// Importar os arquivos de worker necessários
-import 'ace-builds/src-noconflict/worker-javascript';
-
+// Set the base path for ace
 ace.config.set('basePath', '/node_modules/ace-builds/src-noconflict');
+// Set module URLs if necessary
+ace.config.setModuleUrl('ace/mode/javascript_worker', '/node_modules/ace-builds/src-noconflict/worker-javascript.js');
+
 
 export default {
   name: "FileMapping",
