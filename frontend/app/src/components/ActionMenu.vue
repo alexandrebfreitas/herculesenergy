@@ -24,16 +24,17 @@
     <!-- Componentes MoveModal e AceEditor -->
     <MoveModal
         v-if="showMoveModal"
-        @close="showMoveModal = false"
-        @refresh="$emit('refresh')"
+        @close="closeMoveModal"
+        @refresh="handleRefresh"
         :file-item="fileItem"
     ></MoveModal>
 
     <AceEditor
         v-if="showEditor"
-        @close="showEditor = false"
-        @refresh="$emit('refresh')"
-        :file-item="fileItem"
+        @close="closeEditor"
+        @refresh="handleRefresh"
+        :item="fileItem.name"
+        :current-path="currentPath"
     ></AceEditor>
   </div>
 </template>
@@ -41,7 +42,6 @@
 <script>
 import MoveModal from '@/components/MoveModal.vue';
 import AceEditor from '@/components/AceEditor.vue';
-// Removida a importação de moveFile, pois não está sendo utilizada
 import {
   renameFile,
   downloadFile,
@@ -81,13 +81,44 @@ export default {
     isFolder() {
       return this.fileItem.isFolder !== undefined ? this.fileItem.isFolder : this.fileItem.folder;
     },
+    /**
+     * Obtém o caminho atual da pasta, removendo o nome do arquivo do caminho completo.
+     */
+    currentPath() {
+      const path = this.fileItem.path;
+      const lastSlashIndex = path.lastIndexOf('/');
+      if (lastSlashIndex === -1) {
+        return ''; // Arquivo na raiz
+      }
+      return path.substring(0, lastSlashIndex);
+    },
   },
   methods: {
     /**
      * Abre o editor para editar o conteúdo do arquivo.
      */
     edit() {
+      this.closeMoveModal();
       this.showEditor = true;
+    },
+    /**
+     * Fecha o AceEditor.
+     */
+    closeEditor() {
+      this.showEditor = false;
+    },
+    /**
+     * Abre o modal para mover o arquivo ou pasta.
+     */
+    move() {
+      this.closeEditor();
+      this.showMoveModal = true;
+    },
+    /**
+     * Fecha o MoveModal.
+     */
+    closeMoveModal() {
+      this.showMoveModal = false;
     },
     /**
      * Renomeia o arquivo ou pasta.
@@ -107,18 +138,13 @@ export default {
             })
             .catch((error) => {
               console.error('Erro ao renomear item:', error);
-              const errorMessage = error.response?.data?.message || error.response?.data || 'Erro desconhecido.';
+              const errorMessage =
+                  error.response?.data?.message || error.response?.data || 'Erro desconhecido.';
               alert(`Erro ao renomear item: ${errorMessage}`);
             });
       } else {
         alert('Nome inválido ou não alterado.');
       }
-    },
-    /**
-     * Abre o modal para mover o arquivo ou pasta.
-     */
-    move() {
-      this.showMoveModal = true;
     },
     /**
      * Faz o download do arquivo.
@@ -169,6 +195,12 @@ export default {
             const errorMessage = error.response?.data || 'Erro desconhecido.';
             alert(`Erro ao excluir item: ${errorMessage}`);
           });
+    },
+    /**
+     * Método para lidar com o evento de refresh.
+     */
+    handleRefresh() {
+      this.$emit('refresh');
     },
   },
 };

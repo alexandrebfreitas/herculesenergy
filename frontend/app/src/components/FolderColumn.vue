@@ -120,6 +120,9 @@ export default {
             });
       }
     },
+    edit() {
+      this.showEditor = true;
+    },
     /**
      * Emite um evento para navegar para um novo caminho.
      * @param {String} newPath - Novo caminho para navegar.

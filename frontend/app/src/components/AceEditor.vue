@@ -1,31 +1,29 @@
 <!-- src/components/AceEditor.vue -->
 <template>
-  <div class="editor-container">
-    <button @click="$emit('close')">Close</button>
-    <Vue3AceEditor
-      v-model="content"
-      :lang="language"
-      :theme="theme"
-      style="height: 500px; width: 100%;"
-    ></Vue3AceEditor>
-    <button @click="save">Save</button>
-  </div>
+  <Teleport to="body">
+    <div class="ace-container">
+      <div class="editor-header">
+        <h2>Editar {{ item }}</h2>
+        <button class="close-button" @click="closeEditor">✖️ Fechar</button>
+      </div>
+      <div ref="editor" class="ace-editor"></div>
+      <div class="editor-footer">
+        <button class="save-button" @click="save">💾 Salvar</button>
+      </div>
+    </div>
+  </Teleport>
 </template>
 
 <script>
-import { defineComponent } from 'vue';
-import Vue3AceEditor from 'vue3-ace-editor';
+import ace from 'ace-builds';
+import 'ace-builds/src-noconflict/theme-monokai';
+import 'ace-builds/src-noconflict/mode-javascript';
+import 'ace-builds/src-noconflict/mode-html';
+import 'ace-builds/src-noconflict/mode-css';
 import axios from 'axios';
 
-// Import Ace Editor modes and themes
-import 'ace-builds/src-noconflict/ace';
-import 'ace-builds/src-noconflict/ext-language_tools';
-import 'ace-builds/src-noconflict/mode-text';
-import 'ace-builds/src-noconflict/theme-chrome';
-
-export default defineComponent({
+export default {
   name: 'AceEditor',
-  components: { Vue3AceEditor },
   props: {
     item: {
       type: String,
@@ -36,91 +34,195 @@ export default defineComponent({
       required: true,
     },
   },
+  emits: ['close', 'refresh'],
   data() {
     return {
-      content: '',
-      language: 'text',
-      theme: 'chrome',
+      editorInstance: null,
+      isLoading: true,
+      language: 'javascript',
     };
   },
   methods: {
-    fetchContent() {
-      axios
-        .get('/api/file/download', {
-          params: { path: `${this.currentPath}/${this.item}` },
-          responseType: 'text',
-        })
-        .then((response) => {
-          this.content = response.data;
-          this.setEditorMode();
-        })
-        .catch((error) => {
-          console.error('Error fetching file content:', error);
-        });
-    },
-    save() {
-      axios
-        .post(
-          '/api/file/save',
-          {},
-          {
-            params: {
-              path: `${this.currentPath}/${this.item}`,
-              content: this.content,
-            },
-          }
-        )
-        .then(() => {
-          alert('File saved successfully');
-          this.$emit('refresh');
-          this.$emit('close');
-        })
-        .catch((error) => {
-          console.error('Error saving file:', error);
-        });
-    },
-    setEditorMode() {
-      const extension = this.item.split('.').pop();
+    /**
+     * Função para determinar a linguagem com base na extensão do arquivo.
+     */
+    setLanguage() {
+      const extension = this.item.split('.').pop().toLowerCase();
       switch (extension) {
         case 'js':
+        case 'jsx':
+        case 'ts':
+        case 'tsx':
           this.language = 'javascript';
-          import('ace-builds/src-noconflict/mode-javascript');
+          this.editorInstance.getSession().setMode('ace/mode/javascript');
           break;
         case 'html':
+        case 'htm':
           this.language = 'html';
-          import('ace-builds/src-noconflict/mode-html');
+          this.editorInstance.getSession().setMode('ace/mode/html');
           break;
         case 'css':
+        case 'scss':
           this.language = 'css';
-          import('ace-builds/src-noconflict/mode-css');
+          this.editorInstance.getSession().setMode('ace/mode/css');
           break;
-        // Add more cases as needed
+          // Adicione mais casos conforme necessário
         default:
           this.language = 'text';
+          this.editorInstance.getSession().setMode('ace/mode/text');
       }
     },
+    /**
+     * Busca o conteúdo do arquivo para edição.
+     */
+    async fetchContent() {
+      try {
+        const response = await axios.get('/api/file/download', {
+          params: { path: `${this.currentPath}/${this.item}` },
+          responseType: 'text',
+        });
+        this.editorInstance.setValue(response.data, -1); // -1 move o cursor para o início
+        this.isLoading = false;
+      } catch (error) {
+        console.error('Erro ao buscar o conteúdo do arquivo:', error);
+        alert('Erro ao buscar o conteúdo do arquivo.');
+        this.isLoading = false;
+        this.closeEditor();
+      }
+    },
+    /**
+     * Salva o conteúdo editado do arquivo.
+     */
+    async save() {
+      try {
+        const updatedContent = this.editorInstance.getValue();
+        await axios.post(
+            '/api/file/save',
+            {},
+            {
+              params: {
+                path: `${this.currentPath}/${this.item}`,
+                content: updatedContent,
+              },
+            }
+        );
+        alert('Arquivo salvo com sucesso.');
+        this.$emit('refresh');
+        this.closeEditor();
+      } catch (error) {
+        console.error('Erro ao salvar o arquivo:', error);
+        alert('Erro ao salvar o arquivo.');
+      }
+    },
+    /**
+     * Fecha o editor.
+     */
+    closeEditor() {
+      this.$emit('close');
+    },
   },
-  created() {
+  mounted() {
+    this.editorInstance = ace.edit(this.$refs.editor, {
+      theme: 'ace/theme/monokai',
+      mode: 'ace/mode/javascript', // Padrão, será ajustado pela função setLanguage
+      maxLines: Infinity,
+      minLines: 10,
+      fontSize: '14px',
+      tabSize: 4,
+      showPrintMargin: false,
+    });
+
+    this.setLanguage();
     this.fetchContent();
   },
-});
+  beforeUnmount() {
+    if (this.editorInstance) {
+      this.editorInstance.destroy();
+      this.editorInstance = null;
+    }
+  },
+  watch: {
+    item() {
+      if (this.editorInstance) {
+        this.setLanguage();
+        this.fetchContent();
+      }
+    },
+    currentPath() {
+      this.fetchContent();
+    },
+  },
+};
 </script>
 
 <style scoped>
-.editor-container {
+.ace-container {
   position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(0, 0, 0, 0.7);
+  top: 10%;
+  left: 10%;
+  width: 80%;
+  height: 80%;
+  background-color: #2d2d2d;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
+  z-index: 1001; /* Z-index mais alto */
 }
 
-.editor-container button {
-  margin: 10px;
+.editor-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px;
+  background-color: #1e1e1e;
+  border-top-left-radius: 8px;
+  border-top-right-radius: 8px;
+}
+
+.editor-header h2 {
+  color: #fff;
+  margin: 0;
+  font-size: 18px;
+}
+
+.close-button {
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: 20px;
+  cursor: pointer;
+}
+
+.close-button:hover {
+  color: #ff5f56;
+}
+
+.editor-footer {
+  padding: 10px;
+  background-color: #1e1e1e;
+  border-bottom-left-radius: 8px;
+  border-bottom-right-radius: 8px;
+  text-align: right;
+}
+
+.save-button {
+  background-color: #28a745;
+  border: none;
+  color: #fff;
+  padding: 8px 16px;
+  cursor: pointer;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.save-button:hover {
+  background-color: #218838;
+}
+
+.ace-editor {
+  flex: 1;
+  width: 100%;
+  height: 100%;
 }
 </style>
