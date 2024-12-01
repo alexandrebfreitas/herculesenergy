@@ -16,7 +16,8 @@ import {
     faCloudSun,   // Importa o ícone para Meteorologia
     faWater,      // Importa o ícone para Hidrologia
     faLayerGroup, // Importa o ícone para Decks
-    faChartLine   // Importa o ícone para Resultados
+    faChartLine,   // Importa o ícone para Resultados
+    faBars,    // Importa o ícone para Resultados
 } from "@fortawesome/free-solid-svg-icons";
 
 import $ from "jquery";
@@ -43,6 +44,7 @@ library.add(
     faWater,      // Adiciona o ícone à biblioteca
     faLayerGroup, // Adiciona o ícone à biblioteca
     faChartLine,   // Adiciona o ícone à biblioteca
+    faBars,   // Adiciona o ícone à biblioteca
 );
 
 // Cria o app Vue e registra o FontAwesomeIcon como componente global
