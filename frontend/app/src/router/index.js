@@ -8,7 +8,7 @@ import AppContact from "../views/Contact.vue"; // Contato
 import AppLogin from "../views/Login.vue"; // Login
 import AppRegister from "../views/Register.vue"; // Registro
 import FileMapping from "../views/FileMapping.vue"; // Mapeamento de Arquivo
-import AppMap from "../views/Map.vue"; // Mapa
+import AppMap from "../components/Map.vue"; // Para um nível acima
 import AppDecks from "../views/Decks.vue"; // Decks
 
 // Configuração de rotas
