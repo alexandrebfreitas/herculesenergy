@@ -1,6 +1,6 @@
-package com.example.api.Controller;
+package com.example.api.controllers;
 
-import com.example.api.DTO.FileInfoDTO;
+import com.example.api.dto.FileInfoDTO;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.core.io.Resource;
