@@ -60,8 +60,8 @@ export const renameFile = (oldPath, newPath) => {
  * @param {String} fileOperation.to - Novo caminho para onde o arquivo/pasta será movido.
  * @returns {Promise<Object>} - Status e mensagem de sucesso ou erro.
  */
-export const moveFile = (fileOperation) => {
-    return apiClient.post('/move', fileOperation);
+export const moveFile = ({ fileName, from, to }) => {
+    return apiClient.post('/move', { fileName, from, to });
 };
 
 /**

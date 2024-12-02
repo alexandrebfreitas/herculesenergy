@@ -124,4 +124,25 @@ button {
   cursor: pointer;
   font-size: 16px;
 }
+.file-name {
+  margin-left: 5px;
+  flex: 1; /* Permite que o elemento ocupe o espaço restante */
+  overflow: hidden; /* Esconde o texto que ultrapassa o espaço */
+  text-overflow: ellipsis; /* Adiciona reticências ao final do texto */
+  white-space: nowrap; /* Impede que o texto quebre em múltiplas linhas */
+}
+
+.file-extension {
+  margin-left: 5px;
+  color: #888;
+  flex-shrink: 0; /* Evita que a extensão seja comprimida */
+}
+
+.card-content span {
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap; /* Impede que os itens se dividam em várias linhas */
+  cursor: pointer;
+  width: 100%; /* Garante que os itens internos respeitem o limite do card */
+}
 </style>

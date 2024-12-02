@@ -56,13 +56,6 @@
           </ul>
         </li>
         <li>
-          <router-link to="/file-mapping" class="tooltip-container">
-            <font-awesome-icon :icon="['fas', 'folder-open']" />
-            <span v-if="!isCollapsed">File Mapping</span>
-            <span class="tooltip" v-if="isCollapsed">File Mapping</span>
-          </router-link>
-        </li>
-        <li>
           <router-link to="/map" class="tooltip-container">
             <font-awesome-icon :icon="['fas', 'map']" />
             <span v-if="!isCollapsed">Map</span>

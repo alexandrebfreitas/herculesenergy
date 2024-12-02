@@ -7,7 +7,7 @@ import AppAbout from "../views/About.vue"; // Sobre
 import AppContact from "../views/Contact.vue"; // Contato
 import AppLogin from "../views/Login.vue"; // Login
 import AppRegister from "../views/Register.vue"; // Registro
-import FileMapping from "../views/FileMapping.vue"; // Mapeamento de Arquivo
+//import FileMapping from "../views/FileMapping.vue"; // Mapeamento de Arquivo
 import AppMap from "../components/Map.vue"; // Para um nível acima
 import AppDecks from "../views/Decks.vue"; // Decks
 
@@ -31,7 +31,7 @@ const routes = [
       { path: "", component: AppHome }, // Página inicial
       { path: "about", component: AppAbout }, // Sobre
       { path: "contact", component: AppContact }, // Contato
-      { path: "file-mapping", component: FileMapping }, // Mapeamento de Arquivo
+//      { path: "file-mapping", component: FileMapping }, // Mapeamento de Arquivo
       { path: "map", component: AppMap }, // Mapa
       { path: "rodadas-preco/decks", component: AppDecks }, // Decks
     ],
