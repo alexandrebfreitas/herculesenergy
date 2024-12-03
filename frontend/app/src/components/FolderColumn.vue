@@ -4,15 +4,15 @@
     <h3 class="column-header">{{ folderName }}</h3>
     <Draggable
         v-model="items"
-        :group="'items'"
+        :group="{ name: 'folders', pull: true, put: true }"
         @end="onDragEnd"
         tag="div"
         :data-folder="folderContext.folderPath"
         class="item-list"
     >
-      <template #item="{ element, index }">
+      <template #item="{ element }">
         <FileCard
-            :key="index"
+            :key="element.path"
             :file-item="element"
             @refresh="fetchItems"
             @navigate="handleNavigate"
@@ -88,37 +88,36 @@ export default {
      * @param {Object} event - Evento de drag end.
      */
     onDragEnd(event) {
-      const movedItemElement = event.item;
-      const movedItemName = movedItemElement.querySelector('.file-name').innerText.trim();
+      const movedItemName = event.item.dataset.name;
       const fromFolder = event.from.getAttribute('data-folder');
       const toFolder = event.to.getAttribute('data-folder');
 
-      // Verifica se os caminhos estão definidos
       if (!fromFolder || !toFolder) {
-        console.error('Caminhos de origem ou destino não estão definidos.');
-        alert('Erro ao mover item: Caminhos de origem ou destino inválidos.');
+        console.error('Caminhos inválidos.');
         return;
       }
 
-      if (fromFolder !== toFolder) {
-        // Utiliza a função createFileOperation para criar o objeto de operação
-        const fileOperation = createFileOperation({
-          fileName: movedItemName,
-          from: fromFolder,
-          to: toFolder,
-        });
-
-        moveFile(fileOperation)
-            .then(() => {
-              this.fetchItems();
-              this.$emit('refresh');
-            })
-            .catch((error) => {
-              console.error('Erro ao mover item:', error);
-              const errorMessage = error.response?.data?.message || error.response?.data || 'Erro desconhecido.';
-              alert(`Erro ao mover item: ${errorMessage}`);
-            });
+      if (fromFolder === toFolder) {
+        console.log('Nenhuma ação necessária, o item não foi movido.');
+        return;
       }
+
+      // Prepara o objeto de operação
+      const fileOperation = createFileOperation({
+        fileName: movedItemName,
+        from: fromFolder,
+        to: toFolder,
+      });
+
+      moveFile(fileOperation)
+        .then(() => {
+          this.fetchItems();
+          this.$emit('refresh');
+        })
+        .catch((error) => {
+          console.error('Erro ao mover item:', error);
+          alert('Erro ao mover item.');
+        });
     },
     edit() {
       this.showEditor = true;

@@ -14,6 +14,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.nio.file.*;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -96,22 +97,51 @@ public class FileController {
 
     // Endpoint para download de arquivos
     @GetMapping("/download")
-    public ResponseEntity<Resource> downloadFile(@RequestParam("path") String path) {
+    public ResponseEntity<Resource> download(@RequestParam("path") String path) {
         try {
-            Path filePath = Paths.get("uploads").resolve(path).normalize();
-            Resource resource = new UrlResource(filePath.toUri());
+            Path targetPath = Paths.get("uploads").resolve(path).normalize();
 
-            if (resource.exists()) {
-                return ResponseEntity.ok()
-                        .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + resource.getFilename() + "\"")
-                        .body(resource);
-            } else {
+            if (!Files.exists(targetPath)) {
                 return ResponseEntity.status(404).body(null);
             }
-        } catch (MalformedURLException e) {
+
+            Resource resource;
+            String downloadFileName;
+
+            if (Files.isDirectory(targetPath)) {
+                // Caso seja uma pasta, cria um ZIP temporário
+                Path zipFile = Files.createTempFile("folder-", ".zip");
+                try (ZipOutputStream zos = new ZipOutputStream(Files.newOutputStream(zipFile))) {
+                    Files.walk(targetPath).forEach(file -> {
+                        try {
+                            String zipEntryName = targetPath.relativize(file).toString();
+                            zos.putNextEntry(new ZipEntry(zipEntryName));
+                            if (!Files.isDirectory(file)) {
+                                Files.copy(file, zos);
+                            }
+                            zos.closeEntry();
+                        } catch (IOException e) {
+                            throw new RuntimeException("Erro ao adicionar arquivo ao ZIP", e);
+                        }
+                    });
+                }
+                resource = new UrlResource(zipFile.toUri());
+                downloadFileName = targetPath.getFileName() + ".zip";
+            } else {
+                // Caso seja um arquivo, retorna diretamente
+                resource = new UrlResource(targetPath.toUri());
+                downloadFileName = targetPath.getFileName().toString();
+            }
+
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + downloadFileName + "\"")
+                    .body(resource);
+
+        } catch (IOException e) {
             return ResponseEntity.status(500).body(null);
         }
     }
+
 
     // Endpoint para listar arquivos e pastas em um diretório específico
     @GetMapping("/list")
@@ -239,7 +269,7 @@ public class FileController {
         }
     }
     @RequestMapping(value = "/move", method = RequestMethod.POST, produces = "application/json")
-    public ResponseEntity<Map<String, String>> moveFile(@RequestBody Map<String, String> payload) {
+    public ResponseEntity<Map<String, String>> moveFileOrFolder(@RequestBody Map<String, String> payload) {
         String fileName = payload.get("fileName");
         String from = payload.get("from");
         String to = payload.get("to");
@@ -258,24 +288,62 @@ public class FileController {
 
             if (!Files.exists(sourcePath)) {
                 response.put("status", "error");
-                response.put("message", "Source file not found: " + sourcePath);
+                response.put("message", "Source not found: " + sourcePath);
                 return ResponseEntity.status(404).body(response);
             }
 
-            Files.createDirectories(targetPath.getParent());
-            Files.move(sourcePath, targetPath, StandardCopyOption.REPLACE_EXISTING);
+            // Verifica se é diretório ou arquivo
+            if (Files.isDirectory(sourcePath)) {
+                // Mover um diretório com seu conteúdo
+                Files.walkFileTree(sourcePath, new SimpleFileVisitor<>() {
+                    @Override
+                    public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
+                        Path targetDir = targetPath.resolve(sourcePath.relativize(dir));
+                        Files.createDirectories(targetDir); // Cria diretórios no destino
+                        return FileVisitResult.CONTINUE;
+                    }
+
+                    @Override
+                    public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+                        Path targetFile = targetPath.resolve(sourcePath.relativize(file));
+                        Files.move(file, targetFile, StandardCopyOption.REPLACE_EXISTING); // Move arquivos
+                        return FileVisitResult.CONTINUE;
+                    }
+                });
+
+                // Remove o diretório original após mover seu conteúdo
+                Files.walkFileTree(sourcePath, new SimpleFileVisitor<>() {
+                    @Override
+                    public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+                        Files.delete(file);
+                        return FileVisitResult.CONTINUE;
+                    }
+
+                    @Override
+                    public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
+                        Files.delete(dir);
+                        return FileVisitResult.CONTINUE;
+                    }
+                });
+
+            } else {
+                // Mover um arquivo individual
+                Files.createDirectories(targetPath.getParent());
+                Files.move(sourcePath, targetPath, StandardCopyOption.REPLACE_EXISTING);
+            }
 
             response.put("status", "success");
-            response.put("message", "File moved successfully from " + from + " to " + to);
+            response.put("message", "Moved successfully from " + from + " to " + to);
             return ResponseEntity.ok(response);
         } catch (IOException e) {
             response.put("status", "error");
-            response.put("message", "Could not move file: " + e.getMessage());
+            response.put("message", "Could not move: " + e.getMessage());
             return ResponseEntity.status(500).body(response);
         }
     }
+
     @PostMapping("/rename")
-    public ResponseEntity<String> renameFile(
+    public ResponseEntity<String> renameFileOrFolder(
             @RequestParam("oldPath") String oldPath,
             @RequestParam("newPath") String newPath) {
         try {
@@ -283,15 +351,22 @@ public class FileController {
             Path targetPath = Paths.get("uploads").resolve(newPath).normalize();
 
             if (!Files.exists(sourcePath)) {
-                return ResponseEntity.status(404).body("File not found: " + oldPath);
+                return ResponseEntity.status(404).body("Source not found: " + oldPath);
             }
 
+            // Verifica se o destino já existe
+            if (Files.exists(targetPath)) {
+                return ResponseEntity.status(400).body("Target already exists: " + newPath);
+            }
+
+            // Movimenta o arquivo ou pasta para o novo caminho
             Files.move(sourcePath, targetPath, StandardCopyOption.REPLACE_EXISTING);
 
-            return ResponseEntity.ok("File renamed successfully from " + oldPath + " to " + newPath);
+            return ResponseEntity.ok("Item renamed successfully from " + oldPath + " to " + newPath);
         } catch (IOException e) {
-            return ResponseEntity.status(500).body("Could not rename file: " + e.getMessage());
+            return ResponseEntity.status(500).body("Could not rename item: " + e.getMessage());
         }
     }
+
 
 }

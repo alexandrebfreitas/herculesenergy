@@ -1,8 +1,7 @@
-<!-- src/components/ActionMenu.vue -->
 <template>
   <div class="menu">
     <ul>
-      <!-- Editar apenas para arquivos, não para pastas -->
+      <!-- Editar disponível apenas para arquivos -->
       <li @click="edit" v-if="!isFolder">Editar</li>
 
       <!-- Renomear disponível para ambos arquivos e pastas -->
@@ -11,10 +10,10 @@
       <!-- Mover disponível para ambos arquivos e pastas -->
       <li @click="move">Mover</li>
 
-      <!-- Download apenas para arquivos, não para pastas -->
-      <li @click="download" v-if="!isFolder">Download</li>
+      <!-- Download disponível para ambos arquivos e pastas -->
+      <li @click="download">Download</li>
 
-      <!-- Descompactar apenas para arquivos ZIP e não para pastas -->
+      <!-- Descompactar disponível apenas para arquivos ZIP -->
       <li v-if="isZip && !isFolder" @click="unzip">Descompactar</li>
 
       <!-- Excluir disponível para ambos arquivos e pastas -->
@@ -69,92 +68,37 @@ export default {
   },
   computed: {
     /**
-     * Determina se o arquivo é um ZIP baseado na extensão.
+     * Determina se o item é um arquivo ZIP.
      */
     isZip() {
       return this.fileItem.extension === 'zip';
     },
     /**
      * Determina se o item é uma pasta.
-     * Prioriza a propriedade 'isFolder' se disponível, caso contrário, utiliza 'folder'.
      */
     isFolder() {
-      return this.fileItem.isFolder !== undefined ? this.fileItem.isFolder : this.fileItem.folder;
+      return this.fileItem.isFolder;
     },
     /**
-     * Obtém o caminho atual da pasta, removendo o nome do arquivo do caminho completo.
+     * Obtém o caminho atual da pasta.
      */
     currentPath() {
       const path = this.fileItem.path;
-      const lastSlashIndex = path.lastIndexOf('/');
-      if (lastSlashIndex === -1) {
-        return ''; // Arquivo na raiz
-      }
-      return path.substring(0, lastSlashIndex);
+      return path.substring(0, path.lastIndexOf('/')) || '';
     },
   },
   methods: {
     /**
-     * Abre o editor para editar o conteúdo do arquivo.
+     * Faz o download do arquivo ou pasta.
      */
-    edit() {
-      this.closeMoveModal();
-      this.showEditor = true;
-    },
-    /**
-     * Fecha o AceEditor.
-     */
-    closeEditor() {
-      this.showEditor = false;
-    },
-    /**
-     * Abre o modal para mover o arquivo ou pasta.
-     */
-    move() {
-      this.closeEditor();
-      this.showMoveModal = true;
-    },
-    /**
-     * Fecha o MoveModal.
-     */
-    closeMoveModal() {
-      this.showMoveModal = false;
-    },
-    /**
-     * Renomeia o arquivo ou pasta.
-     */
-    rename() {
-      const newName = prompt('Digite o novo nome:', this.fileItem.name);
-      if (newName && newName.trim() !== '' && newName !== this.fileItem.name) {
-        const oldPath = this.fileItem.path;
-        const directory = oldPath.substring(0, oldPath.lastIndexOf('/'));
-        const newPath = `${directory}/${newName}`.replace(/\/+/g, '/');
-
-        // Faz a requisição para renomear o arquivo/pasta
-        renameFile(oldPath, newPath)
-            .then(() => {
-              this.$emit('refresh');
-              this.$emit('close');
-            })
-            .catch((error) => {
-              console.error('Erro ao renomear item:', error);
-              const errorMessage =
-                  error.response?.data?.message || error.response?.data || 'Erro desconhecido.';
-              alert(`Erro ao renomear item: ${errorMessage}`);
-            });
-      } else {
-        alert('Nome inválido ou não alterado.');
+    async download() {
+      try {
+        await downloadFile(this.fileItem.path);
+        alert('Download iniciado.');
+      } catch (error) {
+        console.error('Erro ao fazer download:', error);
+        alert('Erro ao fazer download.');
       }
-    },
-    /**
-     * Faz o download do arquivo.
-     */
-    download() {
-      if (this.isFolder) {
-        alert('Download indisponível para pastas.');
-        return;
-      }
-      downloadFile(this.fileItem.path);
     },
     /**
      * Descompacta o arquivo ZIP.
@@ -168,36 +112,79 @@ export default {
           .then(() => {
             alert('Arquivo descompactado com sucesso.');
             this.$emit('refresh');
-            this.$emit('close');
           })
           .catch((error) => {
             console.error('Erro ao descompactar arquivo:', error);
-            const errorMessage = error.response?.data || 'Erro desconhecido.';
-            alert(`Erro ao descompactar arquivo: ${errorMessage}`);
+            alert('Erro ao descompactar arquivo.');
           });
     },
     /**
-     * Exclui o arquivo ou pasta após confirmação do usuário.
+     * Renomeia o item (arquivo ou pasta).
+     */
+    rename() {
+      const newName = prompt('Digite o novo nome:', this.fileItem.name);
+      if (!newName || newName.trim() === '' || newName === this.fileItem.name) {
+        alert('Nome inválido ou não alterado.');
+        return;
+      }
+      const oldPath = this.fileItem.path;
+      const newPath = `${this.currentPath}/${newName}`.replace(/\/+/g, '/');
+      renameFile(oldPath, newPath)
+          .then(() => {
+            this.$emit('refresh');
+          })
+          .catch((error) => {
+            console.error('Erro ao renomear item:', error);
+            alert('Erro ao renomear item.');
+          });
+    },
+    /**
+     * Exclui o item após confirmação do usuário.
      */
     deleteItem() {
       const confirmDelete = confirm(`Tem certeza que deseja excluir "${this.fileItem.name}"?`);
-      if (!confirmDelete) {
-        return;
-      }
+      if (!confirmDelete) return;
+
       deleteItemRequest(this.fileItem.path)
           .then(() => {
             alert('Item excluído com sucesso.');
             this.$emit('refresh');
-            this.$emit('close');
           })
           .catch((error) => {
             console.error('Erro ao excluir item:', error);
-            const errorMessage = error.response?.data || 'Erro desconhecido.';
-            alert(`Erro ao excluir item: ${errorMessage}`);
+            alert('Erro ao excluir item.');
           });
     },
     /**
-     * Método para lidar com o evento de refresh.
+     * Abre o editor para arquivos.
+     */
+    edit() {
+      if (this.isFolder) {
+        alert('Edição não disponível para pastas.');
+        return;
+      }
+      this.showEditor = true;
+    },
+    /**
+     * Fecha o AceEditor.
+     */
+    closeEditor() {
+      this.showEditor = false;
+    },
+    /**
+     * Abre o modal para mover o item.
+     */
+    move() {
+      this.showMoveModal = true;
+    },
+    /**
+     * Fecha o MoveModal.
+     */
+    closeMoveModal() {
+      this.showMoveModal = false;
+    },
+    /**
+     * Lida com o evento de refresh.
      */
     handleRefresh() {
       this.$emit('refresh');
