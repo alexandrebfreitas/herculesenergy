@@ -1,24 +1,33 @@
-<!-- src/components/FileCard.vue -->
 <template>
   <div class="card" :data-name="fileItem.name">
     <div class="card-content">
-      <span @click="handleClick">
-        <i :class="fileItem.isFolder ? 'folder-icon' : 'file-icon'"></i>
-        <span class="file-name">{{ fileItem.name }}</span> <!-- Classe correta para seleção -->
+      <span @click="handleClick" class="tooltip-container">
+        <!-- Uso do componente FontAwesomeIcon -->
+        <font-awesome-icon :icon="fileItem.isFolder ? 'folder-open' : 'file'" />
+
+        <!-- Nome truncado com tooltip -->
+        <span class="file-name" :title="tooltipContent">
+          {{ fileItem.name.length > 15 ? fileItem.name.substring(0, 15) + '...' : fileItem.name }}
+        </span>
+
         <span v-if="!fileItem.isFolder && fileItem.extension" class="file-extension">.{{ fileItem.extension }}</span>
+
+        <!-- Tooltip personalizada -->
+        <span class="tooltip">
+          {{ tooltipContent }}
+        </span>
       </span>
-      <span class="file-size">{{ formatFileSize(fileItem.size) }}</span>
-      <button @click.stop="toggleMenu">⋮</button> <!-- @click.stop para evitar propagação -->
+      <ActionMenu
+          :fileItem="fileItem"
+          @refresh="fetchItems"
+          @navigate="navigate"
+      ></ActionMenu>
+      <!-- <span class="file-size">{{ formatFileSize(fileItem.size) }}</span> -->
     </div>
-    <ActionMenu
-        v-if="showMenu"
-        :file-item="fileItem"
-        @close="showMenu = false"
-        @refresh="fetchItems"
-        @navigate="navigate"
-    ></ActionMenu>
+
   </div>
 </template>
+
 
 <script>
 import ActionMenu from '@/components/ActionMenu.vue';
@@ -37,6 +46,15 @@ export default {
       showMenu: false,
     };
   },
+  computed: {
+    /**
+     * Conteúdo da tooltip com informações detalhadas do item.
+     */
+    tooltipContent() {
+      const formattedSize = this.formatFileSize(this.fileItem.size);
+      return `Nome: ${this.fileItem.name}\nTamanho: ${formattedSize}`;
+    },
+  },
   methods: {
     /**
      * Formata o tamanho do arquivo para uma representação legível.
@@ -49,32 +67,17 @@ export default {
       else if (size < 1073741824) return `${(size / 1048576).toFixed(1)} MB`;
       else return `${(size / 1073741824).toFixed(1)} GB`;
     },
-    /**
-     * Alterna a exibição do menu de ações.
-     */
     toggleMenu() {
       this.showMenu = !this.showMenu;
     },
-    /**
-     * Lida com o clique no nome do arquivo/pasta.
-     */
     handleClick() {
       if (this.fileItem.isFolder) {
         this.$emit('navigate', this.fileItem.path);
-      } else {
-        // Se for um arquivo, você pode implementar uma ação adicional, como visualizar o arquivo
       }
     },
-    /**
-     * Recarrega os itens após uma ação de refresh.
-     */
     fetchItems() {
       this.$emit('refresh');
     },
-    /**
-     * Lida com a navegação para um novo caminho.
-     * @param {String} newPath - Novo caminho para navegar.
-     */
     navigate(newPath) {
       this.$emit('navigate', newPath);
     },
@@ -105,6 +108,10 @@ export default {
 
 .file-name {
   margin-left: 5px;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .file-extension {
@@ -124,25 +131,35 @@ button {
   cursor: pointer;
   font-size: 16px;
 }
-.file-name {
-  margin-left: 5px;
-  flex: 1; /* Permite que o elemento ocupe o espaço restante */
-  overflow: hidden; /* Esconde o texto que ultrapassa o espaço */
-  text-overflow: ellipsis; /* Adiciona reticências ao final do texto */
-  white-space: nowrap; /* Impede que o texto quebre em múltiplas linhas */
-}
 
-.file-extension {
-  margin-left: 5px;
-  color: #888;
-  flex-shrink: 0; /* Evita que a extensão seja comprimida */
-}
-
-.card-content span {
-  display: flex;
-  align-items: center;
-  flex-wrap: nowrap; /* Impede que os itens se dividam em várias linhas */
+/* Tooltip */
+.tooltip-container {
+  position: relative;
+  display: inline-block;
   cursor: pointer;
-  width: 100%; /* Garante que os itens internos respeitem o limite do card */
+}
+
+.tooltip-container:hover .tooltip {
+  visibility: visible;
+  opacity: 1;
+}
+
+.tooltip {
+  visibility: hidden;
+  width: 200px;
+  background-color: #333;
+  color: #fff;
+  text-align: left;
+  padding: 8px;
+  border-radius: 4px;
+  position: fixed; /* Permite renderizar fora do fluxo do layout */
+  bottom: auto;
+  top: auto; /* Ajustado dinamicamente no JavaScript */
+  left: auto; /* Ajustado dinamicamente no JavaScript */
+  opacity: 0;
+  transition: opacity 0.3s;
+  z-index: 1050; /* Valor alto para ficar acima da sidebar */
+  white-space: pre-line; /* Exibe o texto em múltiplas linhas */
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 </style>

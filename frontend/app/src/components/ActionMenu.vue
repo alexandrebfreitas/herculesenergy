@@ -1,23 +1,50 @@
+<!-- src/components/ActionMenu.vue -->
 <template>
-  <div class="menu">
-    <ul>
+  <div class="dropdown">
+    <!-- Botão de Ações -->
+    <button
+        class="btn btn-secondary btn-sm "
+        type="button"
+        id="actionMenuButton"
+        data-bs-toggle="dropdown"
+        aria-expanded="false"
+    >
+      ⋮
+    </button>
+
+    <!-- Menu Dropdown do Bootstrap -->
+    <ul class="dropdown-menu" aria-labelledby="actionMenuButton">
       <!-- Editar disponível apenas para arquivos -->
-      <li @click="edit" v-if="!isFolder">Editar</li>
+      <li v-if="!isFolder">
+        <button class="dropdown-item" @click="edit">Editar</button>
+      </li>
 
       <!-- Renomear disponível para ambos arquivos e pastas -->
-      <li @click="rename">Renomear</li>
+      <li>
+        <button class="dropdown-item" @click="rename">Renomear</button>
+      </li>
 
       <!-- Mover disponível para ambos arquivos e pastas -->
-      <li @click="move">Mover</li>
+      <li>
+        <button class="dropdown-item" @click="move">Mover</button>
+      </li>
 
       <!-- Download disponível para ambos arquivos e pastas -->
-      <li @click="download">Download</li>
+      <li>
+        <button class="dropdown-item" @click="download">Download</button>
+      </li>
 
       <!-- Descompactar disponível apenas para arquivos ZIP -->
-      <li v-if="isZip && !isFolder" @click="unzip">Descompactar</li>
+      <li v-if="isZip && !isFolder">
+        <button class="dropdown-item" @click="unzip">Descompactar</button>
+      </li>
+
+      <li><hr class="dropdown-divider"></li>
 
       <!-- Excluir disponível para ambos arquivos e pastas -->
-      <li @click="deleteItem">Excluir</li>
+      <li>
+        <button class="dropdown-item text-danger" @click="deleteItem">Excluir</button>
+      </li>
     </ul>
 
     <!-- Componentes MoveModal e AceEditor -->
@@ -94,7 +121,8 @@ export default {
     async download() {
       try {
         await downloadFile(this.fileItem.path);
-        alert('Download iniciado.');
+        this.$emit('refresh');
+
       } catch (error) {
         console.error('Erro ao fazer download:', error);
         alert('Erro ao fazer download.');
@@ -112,6 +140,7 @@ export default {
           .then(() => {
             alert('Arquivo descompactado com sucesso.');
             this.$emit('refresh');
+            this.closeMenu();
           })
           .catch((error) => {
             console.error('Erro ao descompactar arquivo:', error);
@@ -132,6 +161,7 @@ export default {
       renameFile(oldPath, newPath)
           .then(() => {
             this.$emit('refresh');
+
           })
           .catch((error) => {
             console.error('Erro ao renomear item:', error);
@@ -147,7 +177,6 @@ export default {
 
       deleteItemRequest(this.fileItem.path)
           .then(() => {
-            alert('Item excluído com sucesso.');
             this.$emit('refresh');
           })
           .catch((error) => {
@@ -170,6 +199,7 @@ export default {
      */
     closeEditor() {
       this.showEditor = false;
+
     },
     /**
      * Abre o modal para mover o item.
@@ -182,6 +212,7 @@ export default {
      */
     closeMoveModal() {
       this.showMoveModal = false;
+
     },
     /**
      * Lida com o evento de refresh.
@@ -189,35 +220,37 @@ export default {
     handleRefresh() {
       this.$emit('refresh');
     },
+    /**
+     * Fecha o menu dropdown
+     */
   },
 };
 </script>
 
 <style scoped>
-.menu {
-  position: absolute;
-  top: 100%;
-  right: 0;
-  background: white;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  z-index: 100;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+.menu.dropdown .dropdown-menu {
+  display: block; /* Sempre visível */
+  position: static; /* Remove o posicionamento absoluto */
+  float: none; /* Remove o float */
+  margin-top: 0; /* Remove a margem superior */
+  /* Opcional: Personalize a largura conforme necessário */
+  min-width: 200px;
 }
 
-.menu ul {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-.menu li {
-  padding: 8px 12px;
+/* Mantém o efeito hover nos itens */
+.dropdown-item:hover {
+  background-color: #f8f9fa; /* Cor de fundo no hover */
   cursor: pointer;
-  white-space: nowrap;
 }
 
-.menu li:hover {
-  background-color: #f0f0f0;
+/* Estiliza o separador */
+.dropdown-divider {
+  border-top: 1px solid #e9ecef;
+  margin: 0.5rem 0;
+}
+
+/* Opcional: Ajustes adicionais para o menu */
+.menu {
+  /* Adicione estilos conforme necessário */
 }
 </style>

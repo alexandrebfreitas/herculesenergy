@@ -1,21 +1,24 @@
 <!-- src/views/Decks.vue -->
 <template>
   <div id="decks">
-    <div class="columns-container">
-      <FolderColumn
-          v-for="(folderContext, index) in folders"
-          :key="index"
-          :folder-context="folderContext"
-          @refresh="fetchFolders"
-          @navigate="navigateTo"
-      ></FolderColumn>
-      <!-- Botão "Criar Pasta" -->
-      <div class="create-folder-button-container">
-        <button @click="createFolder">Criar Pasta</button>
+    <!-- Botão "Novo Estudo" -->
+      <button class="btn btn-primary" @click="createFolder">Novo Estudo</button>
+
+    <!-- Contêiner de rolagem horizontal -->
+    <div class="scroll-container">
+      <div class="columns-container">
+        <FolderColumn
+            v-for="(folderContext, index) in folders"
+            :key="index"
+            :folder-context="folderContext"
+            @refresh="fetchFolders"
+            @navigate="navigateTo"
+        ></FolderColumn>
       </div>
     </div>
   </div>
 </template>
+
 
 <script>
 import FolderColumn from '@/components/FolderColumn.vue';
@@ -98,13 +101,19 @@ export default {
 </script>
 
 <style scoped>
+.scroll-container {
+  overflow-x: auto; /* Ativa rolagem horizontal */
+  white-space: nowrap; /* Mantém os itens em linha */
+  display: flex;
+  gap: 10px; /* Espaçamento entre os itens */
+}
+
 .columns-container {
   display: flex;
   align-items: flex-start;
-  gap: 10px;
+  gap: 10px; /* Espaçamento entre as colunas */
 }
 
-/* Estilo para o contêiner do botão */
 .create-folder-button-container {
   display: flex;
   align-items: center;
