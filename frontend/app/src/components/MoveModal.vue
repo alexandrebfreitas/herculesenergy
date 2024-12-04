@@ -16,13 +16,27 @@
         </span>
       </nav>
 
-      <!-- Listagem de pastas -->
+      <!-- Campo de filtro por nome -->
+      <div class="filter-container">
+        <input
+            type="text"
+            v-model="filterName"
+            placeholder="Filtrar pastas por nome..."
+            class="filter-input"
+        />
+      </div>
+
+      <!-- Listagem de pastas filtradas -->
       <ul>
-        <li v-for="folder in folders" :key="folder.relativePath" @click="navigateInto(folder)">
+        <li
+            v-for="folder in filteredFolders"
+            :key="folder.relativePath"
+            @click="navigateInto(folder)"
+        >
           📁 {{ folder.name || "Sem Nome" }}
         </li>
       </ul>
-      <p v-if="folders.length === 0">Nenhuma pasta encontrada.</p>
+      <p v-if="filteredFolders.length === 0">Nenhuma pasta encontrada.</p>
     </div>
     <div class="modal-footer">
       <button @click="confirmMove">Mover Aqui</button>
@@ -43,13 +57,26 @@ export default {
   },
   data() {
     return {
-      currentPath: "", // Caminho atual para navegação
+      currentPath: "estudos", // Caminho atual para navegação
       folders: [], // Lista de pastas no caminho atual
+      filterName: "", // Valor do filtro de nome
     };
   },
   computed: {
     currentPathParts() {
       return ["", ...(this.currentPath || "").split("/")].filter((part) => part !== "");
+    },
+    /**
+     * Retorna as pastas filtradas com base no filterName.
+     */
+    filteredFolders() {
+      if (!this.filterName.trim()) {
+        return this.folders;
+      }
+      const filter = this.filterName.trim().toLowerCase();
+      return this.folders.filter(folder =>
+          folder.name.toLowerCase().includes(filter)
+      );
     },
   },
   mounted() {
@@ -94,8 +121,8 @@ export default {
         return;
       }
       this.currentPath = this.currentPath
-        ? `${this.currentPath}/${folder.name}`
-        : folder.name;
+          ? `${this.currentPath}/${folder.name}`
+          : folder.name;
       this.listFolders(); // Atualiza a lista de pastas no novo caminho
     },
     /**
@@ -179,6 +206,17 @@ nav {
 
 .nav-part:hover {
   color: #0056b3;
+}
+
+.filter-container {
+  margin-bottom: 10px;
+}
+
+.filter-input {
+  width: 100%;
+  padding: 5px 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
 }
 
 ul {
