@@ -9,18 +9,20 @@
         <div class="header-right">
           <div class="user-info">
             <span class="user-name"><i class="fas fa-user"></i> Fulano</span>
-            <span class="user-company"><i class="fas fa-building"></i> Fantasia</span>
+            <span class="user-company"
+              ><i class="fas fa-building"></i> Fantasia</span
+            >
           </div>
           <div class="dropdown">
-          <button
-            class="btn btn-primary header-btn styled-menu-btn"
-            type="button"
-            id="menuButton"
-            data-bs-toggle="dropdown"
-            aria-expanded="false"
-          >
-            <font-awesome-icon icon="bars" />
-          </button>
+            <button
+              class="btn btn-primary header-btn styled-menu-btn"
+              type="button"
+              id="menuButton"
+              data-bs-toggle="dropdown"
+              aria-expanded="false"
+            >
+              <font-awesome-icon icon="bars" />
+            </button>
             <ul class="dropdown-menu" aria-labelledby="menuButton">
               <li><a class="dropdown-item" href="/about">About</a></li>
               <li><a class="dropdown-item" href="/login">Login</a></li>
@@ -59,6 +61,8 @@ export default {
   display: flex;
   flex-direction: column;
   height: 100vh;
+  min-height: 0; /* Permite que os filhos encolham dentro da altura da tela */
+  z-index: 999; /* main content terá z-index menor que o sidebar */
 }
 
 /* Header */
@@ -70,7 +74,31 @@ export default {
   justify-content: space-between;
   border-bottom: 1px solid #e0e0e0;
 }
+.content {
+  z-index: 1; /* main content terá z-index menor que o sidebar */
+}
 
+.content-wrapper > Sidebar {
+  position: fixed;
+  top: 60px; /* Abaixo do header */
+  left: 0;
+  width: 250px; /* Largura do sidebar */
+  height: calc(100vh - 60px); /* Altura do sidebar */
+  background-color: #2c3e50;
+  z-index: 9999; /* Bem acima do main content */
+  overflow: visible; /* Permite que o botão saia da área */
+}
+
+.content {
+  flex: 1;
+  padding: 20px;
+  overflow-y: auto; /* Ativa a barra de rolagem vertical quando exceder o espaço disponível */
+  background-color: #f5f5f5;
+  transition: margin-left 0.3s ease;
+  min-height: 0; /* Garante que a área do main possa encolher e rolar */
+  position: relative;
+  overflow-y: auto;
+}
 .header-container {
   display: flex;
   align-items: center;

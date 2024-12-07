@@ -1,7 +1,9 @@
 <template>
   <div :class="['sidebar', { collapsed: isCollapsed }]">
     <button class="toggle-btn" @click="toggleSidebar">
-      <font-awesome-icon :icon="isCollapsed ? ['fas', 'chevron-right'] : ['fas', 'chevron-left']" />
+      <font-awesome-icon
+        :icon="isCollapsed ? ['fas', 'chevron-right'] : ['fas', 'chevron-left']"
+      />
     </button>
     <nav>
       <ul>
@@ -18,24 +20,36 @@
             <span v-if="!isCollapsed">Rodadas de Preço</span>
             <span class="tooltip" v-if="isCollapsed">Rodadas de Preço</span>
             <font-awesome-icon
-                class="submenu-indicator"
-                :icon="isSubmenuOpen ? ['fas', 'chevron-down'] : ['fas', 'chevron-right']"
-                v-if="!isCollapsed"
+              class="submenu-indicator"
+              :icon="
+                isSubmenuOpen
+                  ? ['fas', 'chevron-down']
+                  : ['fas', 'chevron-right']
+              "
+              v-if="!isCollapsed"
             />
           </div>
           <ul :class="['submenu', { expanded: isSubmenuOpen }]">
             <li>
-              <router-link to="/rodadas-preco/meteorologia" class="tooltip-container">
+              <router-link
+                to="/rodadas-preco/meteorologia"
+                class="tooltip-container"
+              >
                 <font-awesome-icon :icon="['fas', 'cloud-sun']" />
                 <span v-if="!isCollapsed">Meteorologia</span>
                 <span class="tooltip" v-if="isCollapsed">Meteorologia</span>
               </router-link>
             </li>
             <li>
-              <router-link to="/rodadas-preco/hidrologia" class="tooltip-container">
+              <router-link
+                to="/rodadas-preco/hidrologia"
+                class="tooltip-container"
+              >
                 <font-awesome-icon :icon="['fas', 'water']" />
                 <span v-if="!isCollapsed">Hidrologia (SMAP)</span>
-                <span class="tooltip" v-if="isCollapsed">Hidrologia (SMAP)</span>
+                <span class="tooltip" v-if="isCollapsed"
+                  >Hidrologia (SMAP)</span
+                >
               </router-link>
             </li>
             <li>
@@ -46,13 +60,15 @@
               </router-link>
             </li>
             <li>
-              <router-link to="/rodadas-preco/resultados" class="tooltip-container">
+              <router-link
+                to="/rodadas-preco/resultados"
+                class="tooltip-container"
+              >
                 <font-awesome-icon :icon="['fas', 'chart-line']" />
                 <span v-if="!isCollapsed">Resultados</span>
                 <span class="tooltip" v-if="isCollapsed">Resultados</span>
               </router-link>
             </li>
-
           </ul>
         </li>
         <li>
@@ -113,7 +129,7 @@ export default {
 /* Sidebar básica */
 .sidebar {
   width: 250px;
-  height: 100vh;
+  height: calc(100vh - 60px); /* Desconta a altura do header */
   background-color: #2c3e50;
   color: white;
   display: flex;
@@ -133,7 +149,7 @@ export default {
 .toggle-btn {
   position: absolute;
   top: 10px;
-  right: -15px;
+  right: -15px; /* Valor negativo para sair do sidebar */
   background: #1abc9c;
   border: none;
   border-radius: 50%;
@@ -146,6 +162,7 @@ export default {
   cursor: pointer;
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
   transition: transform 0.3s ease, right 0.3s ease;
+  z-index: 10000; /* Maior que o sidebar, garantindo que apareça acima de tudo */
 }
 
 .sidebar.collapsed .toggle-btn {
@@ -257,5 +274,4 @@ export default {
   background-color: rgba(255, 255, 255, 0.1);
   box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.2);
 }
-
 </style>
