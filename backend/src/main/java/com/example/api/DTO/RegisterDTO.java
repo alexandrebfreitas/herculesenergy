@@ -1,4 +1,4 @@
-package com.example.auth.dto;
+package com.example.api.dto;
 
 public class RegisterDTO {
     private String email;

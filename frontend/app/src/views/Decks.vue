@@ -13,6 +13,12 @@
           Mudar para {{ viewMode === "columns" ? "Lista" : "Colunas" }}
         </button>
       </div>
+      <!-- Botão para abrir o CompareModal -->
+      <div class="col-auto">
+        <button class="btn btn-info mb-3" @click="openCompareModal">
+          Comparar Arquivos
+        </button>
+      </div>
 
       <!-- Se estiver em modo lista, mostra o seletor de tamanho da página -->
       <div class="col-auto" v-if="viewMode === 'list'">
@@ -29,6 +35,11 @@
         </select>
       </div>
     </div>
+    <!-- Inclusão do CompareModal -->
+    <CompareModal
+      v-if="isCompareModalOpen"
+      @close="isCompareModalOpen = false"
+    />
 
     <!-- Se estiver em viewMode 'columns', mostra como colunas com nome truncado -->
     <div v-if="viewMode === 'columns'" class="scroll-container base-layer">
@@ -206,10 +217,10 @@ import {
 import createFolderContext from "@/models/folderContext";
 import createFileItem from "@/models/fileItem";
 import createFileOperation from "@/models/fileOperation";
-
+import CompareModal from "@/components/CompareModal.vue"; // Importação do CompareModal
 export default {
   name: "AppDecks",
-  components: { Draggable, FontAwesomeIcon, ActionMenu },
+  components: { Draggable, FontAwesomeIcon, ActionMenu, CompareModal },
   data() {
     return {
       folders: [],
@@ -219,6 +230,7 @@ export default {
       currentPage: 1,
       pageSize: 12, // Valor inicial, pode ser 12
       selectedPageSize: "12", // String para o select
+      isCompareModalOpen: false, // Estado para controlar a exibição do CompareModal
     };
   },
   computed: {
@@ -238,6 +250,12 @@ export default {
   methods: {
     truncateName(name) {
       return name.length > 10 ? name.substring(0, 10) + "..." : name;
+    },
+    openCompareModal() {
+      this.isCompareModalOpen = true;
+    },
+    closeCompareModal() {
+      this.isCompareModalOpen = false;
     },
     fetchFolders() {
       listFiles(this.currentPath)

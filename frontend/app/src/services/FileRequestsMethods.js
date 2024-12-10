@@ -93,3 +93,41 @@ export const deleteItem = (path) => {
     const fullPath = path.replace(/\/+/g, '/');
     return apiClient.delete('/delete', { params: { path: fullPath } });
 };
+
+/**
+ * Obtém o conteúdo de um arquivo específico.
+ * @param {String} filePath - Caminho completo do arquivo.
+ * @returns {Promise} - Resposta da requisição.
+ */
+/**
+ * Método para obter o conteúdo de um arquivo.
+ * @param {string} path - Caminho relativo do arquivo.
+ * @returns {Promise} - Resposta da requisição.
+ */
+export const getFileContent = async (path) => {
+    try {
+      const response = await axios.get('/api/file/download', {
+        params: { path: path.replace(/\/+/g, '/') },
+        responseType: 'text', // Importante para obter o conteúdo como texto
+      });
+      return response;
+    } catch (error) {
+      console.error('Erro ao obter o conteúdo do arquivo:', error);
+      throw error;
+    }
+  };
+/**
+ * Salva o conteúdo de um arquivo.
+ * @param {String} path - Caminho do arquivo que será salvo.
+ * @param {String} content - Conteúdo a ser salvo no arquivo.
+ * @returns {Promise<String>} - Mensagem de sucesso ou erro.
+ */
+export const saveFile = async (path, content) => {
+    try {
+      const response = await apiClient.post('/save', { path, content });
+      return response.data; // Retorna a mensagem do backend
+    } catch (error) {
+      console.error('Erro ao salvar o arquivo:', error);
+      throw error;
+    }
+  };

@@ -251,6 +251,7 @@ export default {
 
 /* Opcional: Ajustes adicionais para o menu */
 .menu {
+  
   /* Adicione estilos conforme necessário */
 }
 </style>

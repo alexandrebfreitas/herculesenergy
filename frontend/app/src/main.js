@@ -69,7 +69,7 @@ library.add(
     faCheck,
     faSave
 );
-
+import "monaco-editor/min/vs/editor/editor.main.css";
 // Cria o app Vue, registra o FontAwesomeIcon como componente global e monta a aplicação
 createApp(App)
     .use(router)
